@@ -4,6 +4,15 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// function clearStorage() {
+//     let session = sessionStorage.getItem('token');
+//     if (session == null) {
+//         localStorage.removeItem('token');
+//     }
+// }
+
+// window.addEventListener('load', clearStorage);
+
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode> TODO commented for react-beautiful-dnd

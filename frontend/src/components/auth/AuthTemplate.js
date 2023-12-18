@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import WidgetFooter from "../form/editable/WidgetFooter";
+import WidgetFooter from "../form/create/WidgetFooter";
 
 function AuthTemplate(props) {
 
@@ -11,7 +11,7 @@ function AuthTemplate(props) {
                         {props.children}
                     </div>
                 </div>
-                <div className="col-md-6 bg-dark"></div>
+                <div className="col-md-6 bg-success"></div>
             </div>
         </div>
     );

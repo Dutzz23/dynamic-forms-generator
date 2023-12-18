@@ -1,5 +1,5 @@
 import React from 'react';
-import ScreenNavbar, {NAVBAR_TABS} from "./screen/ScreenNavbar";
+import ScreenNavbar from "./screen/ScreenNavbar";
 import ScreenFooter from "./screen/ScreenFooter";
 
 function ScreenTemplate(props) {

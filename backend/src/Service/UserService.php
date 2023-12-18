@@ -4,9 +4,14 @@ namespace App\Service;
 
 use App\Entity\Form;
 use App\Entity\User;
+use App\Entity\UserData;
 use App\Entity\UserForms;
+use App\Lib\Connector\Google\GmailService;
+use App\Lib\Connector\MailCreator;
 use App\Repository\UserRepository;
 use Doctrine\Persistence\ManagerRegistry;
+use Exception;
+use Lexik\Bundle\JWTAuthenticationBundle\Security\Http\Authentication\AuthenticationSuccessHandler;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -15,51 +20,81 @@ use Throwable;
 class UserService
 {
     public function __construct(
-        private readonly UserRepository $repository,
+        private readonly UserRepository              $repository,
         private readonly UserPasswordHasherInterface $passwordHasher,
-        private readonly ManagerRegistry $registryManager,
-        private readonly Security $security
-    ) {
+        private readonly ManagerRegistry             $registryManager,
+        private readonly Security                    $security,
+        private readonly GmailService                $mailService
+    )
+    {
     }
 
-    public function createUser(array $userData): bool
+    /**
+     * @throws Exception
+     */
+    public function createUser(array $registerInput): User|false
     {
-        if (!$this->validateData($userData)) {
+        if (!$this->validateData($registerInput)) {
             return false;
         }
         if ($this->repository->findOneBy([
-                'username' => $userData['username']
+                'username' => $registerInput['username']
             ]) !== null) {
             return false;
         }
         $newUser = (new User())
-            ->setUsername($userData['username']);
+            ->setUsername($registerInput['username']);
 
-        $newUser->setPassword($this->passwordHasher->hashPassword($newUser, $userData['password']));
+        $this->setUserData($newUser, $registerInput);
+
+        $newUser->setPassword($this->passwordHasher->hashPassword($newUser, $registerInput['password']));
         $this->registryManager->getManager()->persist($newUser);
         try {
             $this->registryManager->getManager()->flush();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            dump($e);
+            return false;
+        }
+        //$this->sendMail($newUser->getId(), $registerInput);
+        return $newUser;
+    }
+
+    private function validateData(array $registerInput): bool
+    {
+        if (!array_key_exists('username', $registerInput)) {
+            return false;
+        }
+        if (!array_key_exists('password', $registerInput)) {
+            return false;
+        }
+        if (empty($registerInput['username'])) {
+            return false;
+        }
+        if (empty($registerInput['password'])) {
             return false;
         }
         return true;
     }
 
-    private function validateData(array $userData): bool
+    private function setUserData(User $newUser, array $registerInput): void
     {
-        if (!array_key_exists('username', $userData)) {
-            return false;
+
+        $newUserData = (new UserData());
+
+        if (!empty($registerInput['firstName'])) {
+            $newUserData->setFirstName($registerInput['firstName']);
         }
-        if (!array_key_exists('password', $userData)) {
-            return false;
+        if (!empty($registerInput['lastName'])) {
+            $newUserData->setLastName($registerInput['lastName']);
         }
-        if (empty($userData['username'])) {
-            return false;
+        if (!empty($registerInput['email'])) {
+            $newUserData->setEmail($registerInput['email']);
         }
-        if (empty($userData['password'])) {
-            return false;
-        }
-        return true;
+
+        $this->registryManager->getManager()->persist($newUserData);
+        $this->registryManager->getManager()->flush();
+
+        $newUser->setUserData($newUserData);
     }
 
     public function deleteUser(int $userId): bool
@@ -79,10 +114,22 @@ class UserService
 
     private function validateId(int $id): User|false
     {
-        if ($this->repository->find($id) === null) {
+        if (($user = $this->repository->find($id)) === null) {
             return false;
         }
-        return true;
+        return $user;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function sendMail(int $userId, array $registerInput): void
+    {
+        $base = str_split('1234567890qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM');
+        shuffle($base);
+        $nonce = substr(implode(null, $base), 0, 12);
+        $code = $nonce . '.' . hash('md5', $registerInput['username']);
+        $this->mailService->send($registerInput['email'], MailCreator::create($userId, $registerInput['email'], $code));
     }
 
     public function attachForm(Form $form): int
@@ -112,5 +159,15 @@ class UserService
             return 0;
         }
         return $user;
+    }
+
+    public function verifyUser(User $user, string $code): void {
+        $hash = substr($code, 12, null);
+        if(hash('md5', $user->getUserData()->getEmail()) !== $code) {
+            return;
+        }
+        $user->setIsActive(true);
+        $this->registryManager->getManager()->persist($user);
+        $this->registryManager->getManager()->flush();
     }
 }

@@ -1,0 +1,3 @@
+.formComponents-disabledBackground:disabled {
+    background-color: transparent !important;
+}
