@@ -1,48 +1,52 @@
-import axios from "axios";
+import axios, {HttpStatusCode} from "axios";
 import ApiConfig from "./ApiConfig";
 import AuthConfig from "./AuthConfig";
 
 export default class AuthEndpoints {
-    static register(email, password, firstName, lastName) {
+    static register(firstName, lastName, username, email, password) {
         return axios.post(ApiConfig.apiHost + "/register",
             {
                 email: email,
                 password: password,
+                username: username,
                 firstName: firstName,
                 lastName: lastName,
             },
             ApiConfig.apiHeaders)
             .then((response) => {
-                if (response.status === 200) {
-                    AuthConfig.token = response.data.token;
-                    AuthConfig.isAuthenticated = true;
+                if (response.status === HttpStatusCode.Ok) {
+                    localStorage.setItem('token', response.data.token);
+                    return true;
                 }
+                return false;
             })
             .catch((error) => console.error(error));
     }
 
-    static login(email, password) {
-        return axios.post(ApiConfig.apiHost + "/login",
+    static login(username, password) {
+        return axios.post(ApiConfig.apiHost + "/login_check",
             {
-                email: email,
+                username: username,
                 password: password
             },
             ApiConfig.apiHeaders)
             .then((response) => {
-                if (response.status === 200) {
-                    AuthConfig.token = response.data.token;
-                    AuthConfig.isAuthenticated = true;
+                console.log("login")
+                if (response.status === HttpStatusCode.Ok) {
+                    localStorage.setItem('token', response.data.token);
+                    return true;
                 }
+                return false;
             })
-            .catch((error) => console.error(error));
+            .catch((error) => {
+                console.error(error);
+                return false;
+            });
     }
 
     static logout() {
-        return axios.post(ApiConfig.apiHost + "/logout", {}, ApiConfig.apiSecureHeaders)
-            .then((response) => {
-                if (response.status === 200)
-                    AuthConfig.clear();
-            })
-            .catch((error) => console.error(error));
+        //TODO request to server to remove token
+        localStorage.removeItem('token');
+        window.location.href = "/";
     }
 }

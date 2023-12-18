@@ -1,8 +1,6 @@
-import AuthConfig from "./AuthConfig";
-
 export default class ApiConfig {
     static #baseUrl = "";
-    static #apiHost = "";
+    static #apiHost = "http://localhost:8091/api";
 
     static get baseUrl() {
         return this.#baseUrl;
@@ -14,14 +12,18 @@ export default class ApiConfig {
 
     static apiHeaders() {
         return {
-            'Content-Type': 'application/json'
+            headers: {
+                'Content-Type': 'application/json'
+            }
         }
     }
 
     static apiSecureHeaders() {
         return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${AuthConfig.token}`
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
         }
     }
 }
